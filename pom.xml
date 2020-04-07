@@ -9,6 +9,7 @@
     <version>1.0-SNAPSHOT</version>
     <modules>
         <module>simple-start</module>
+        <module>simple_all</module>
     </modules>
     <packaging>pom</packaging>
 
