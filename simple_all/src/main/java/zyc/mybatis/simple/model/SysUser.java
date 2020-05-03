@@ -40,6 +40,12 @@ public class SysUser implements Serializable {
 	 * 创建时间
 	 */
 	private Date createTime;
-	
+
+	private SysRole role;
+
+	/**
+	 * 用户的角色集合
+	 */
+	private List<SysRole> roleList;
 
 }

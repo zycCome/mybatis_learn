@@ -2,11 +2,14 @@ package zyc.mybatis.simple.model;
 
 
 import lombok.Data;
+import zyc.mybatis.simple.type.Enabled;
 
+import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 @Data
-public class SysRole {
+public class SysRole implements Serializable {
 
     private static final long serialVersionUID = 6320941908222932112L;
     /**
@@ -20,7 +23,7 @@ public class SysRole {
     /**
      * 有效标志
      */
-    private Integer enabled;
+    private Enabled enabled;
     /**
      * 创建人
      */
@@ -34,5 +37,10 @@ public class SysRole {
      * 用户信息
      */
     private SysUser user;
+
+    /**
+     * 角色包含的权限列表
+     */
+    List<SysPrivilege> privilegeList;
 
 }

@@ -5,11 +5,28 @@
 <configuration>
     <settings>
         <setting name="logImpl" value="LOG4J"/>
+        <setting name="aggressiveLazyLoading" value="false"/>
     </settings>
+
+
 
     <typeAliases>
         <package name="com.zyc.simple.model"/>
     </typeAliases>
+
+    <typeHandlers>
+        <typeHandler
+                javaType="zyc.mybatis.simple.type.Enabled"
+                handler="org.apache.ibatis.type.EnumOrdinalTypeHandler"/>
+    </typeHandlers>
+
+
+<!--    <plugins>-->
+<!--        <plugin interceptor="zyc.mybatis.simple.plugin.PageInterceptor">-->
+<!--            <property name="dialect" value="zyc.mybatis.simple.plugin.MySqlDialect"/>-->
+<!--        </plugin>-->
+<!--        &lt;!&ndash; <plugin interceptor="tk.mybatis.simple.plugin.CameHumpInterceptor"/> &ndash;&gt;-->
+<!--    </plugins>-->
 
     <environments default="development">
         <environment id="development">

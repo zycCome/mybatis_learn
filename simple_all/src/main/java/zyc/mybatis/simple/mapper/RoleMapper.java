@@ -5,11 +5,13 @@ import zyc.mybatis.simple.model.SysRole;
 
 import java.util.List;
 
+//@CacheNamespace(size = 512)
+@CacheNamespaceRef(RoleMapper.class)
 public interface RoleMapper {
 
-    @Select({"select id,role_name roleName, enabled, create_by createBy, create_time createTime",
-            "from sys_role",
-            "where id = #{id}"})
+//    @Select({"select id,role_name roleName, enabled, create_by createBy, create_time createTime",
+//            "from sys_role",
+//            "where id = #{id}"})
     SysRole selectById(Long id);
 
     @Results(id = "roleResultMap", value = {
@@ -68,5 +70,19 @@ public interface RoleMapper {
     int insert3(SysRole sysRole);
 
 
+    /**
+     * 获取所有角色和对应的权限信息
+     *
+     * @return
+     */
+    List<SysRole> selectAllRoleAndPrivileges();
+
+    /**
+     * 根据用户 ID 获取用户的角色信息
+     *
+     * @param userId
+     * @return
+     */
+    List<SysRole> selectRoleByUserIdChoose(Long userId);
 
 }

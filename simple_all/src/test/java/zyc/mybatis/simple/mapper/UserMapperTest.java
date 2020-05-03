@@ -1,11 +1,15 @@
 package zyc.mybatis.simple.mapper;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.session.SqlSession;
 import org.junit.Assert;
 import org.junit.Test;
 import zyc.mybatis.simple.mapper.impl.MyMapperProxy;
+import zyc.mybatis.simple.model.SysPrivilege;
 import zyc.mybatis.simple.model.SysRole;
 import zyc.mybatis.simple.model.SysUser;
+import zyc.mybatis.simple.plugin.PageRowBounds;
 
 import java.lang.reflect.Proxy;
 import java.util.*;
@@ -219,7 +223,339 @@ public class UserMapperTest extends BaseMapperTest {
 		System.out.println(list.size());
 
 	}
-	
+
+
+	@Test
+	public void testSelectByUser(){
+		SqlSession sqlSession = getSqlSession();
+		try {
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//只查询用户名时
+			SysUser query = new SysUser();
+			query.setUserName("ad");
+			List<SysUser> userList = userMapper.selectByUser(query);
+			Assert.assertTrue(userList.size() > 0);
+			//只查询用户邮箱时
+			query = new SysUser();
+			query.setUserEmail("test@mybatis.tk");
+			userList = userMapper.selectByUser(query);
+			Assert.assertTrue(userList.size() > 0);
+			//当同时查询用户名和邮箱时
+			query = new SysUser();
+			query.setUserName("ad");
+			query.setUserEmail("test@mybatis.tk");
+			userList = userMapper.selectByUser(query);
+			//由于没有同时符合这两个条件的用户，查询结果数为 0
+			Assert.assertTrue(userList.size() == 0);
+		} finally {
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+
+	@Test
+	public void testUpdateByIdSelective(){
+		SqlSession sqlSession = getSqlSession();
+		try {
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//从数据库查询 1 个 user 对象
+			SysUser user = new SysUser();
+			//更新 id = 1 的用户
+			user.setId(1L);
+			//修改邮箱
+			user.setUserEmail("test@mybatis.tk");
+			//将新建的对象插入数据库中，特别注意，这里的返回值 result 是执行的 SQL 影响的行数
+			int result = userMapper.updateByIdSelective(user);
+			//只更新 1 条数据
+			Assert.assertEquals(1, result);
+			//根据当前 id 查询修改后的数据
+			user = userMapper.selectById(1L);
+			//修改后的名字保持不变，但是邮箱变成了新的
+			Assert.assertEquals("admin", user.getUserName());
+			Assert.assertEquals("test@mybatis.tk", user.getUserEmail());
+		} finally {
+			//为了不影响数据库中的数据导致其他测试失败，这里选择回滚
+			sqlSession.rollback();
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+	@Test
+	public void testInsertSelective(){
+		SqlSession sqlSession = getSqlSession();
+		try {
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//创建一个 user 对象
+			SysUser user = new SysUser();
+			user.setUserName("test-selective");
+			user.setUserPassword("123456");
+			user.setUserInfo("test info");
+			user.setCreateTime(new Date());
+			//插入数据库
+			userMapper.insertSelective(user);
+			//获取插入的这条数据
+			user = userMapper.selectById(user.getId());
+			Assert.assertEquals("test@mybatis.tk", user.getUserEmail());
+
+		} finally {
+			sqlSession.rollback();
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+
+	@Test
+	public void testSelectByIdOrUserName(){
+		SqlSession sqlSession = getSqlSession();
+		try {
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//只查询用户名时
+			SysUser query = new SysUser();
+			query.setId(1L);
+			query.setUserName("admin");
+			SysUser user = userMapper.selectByIdOrUserName(query);
+			Assert.assertNotNull(user);
+			//当没有 id 时
+			query.setId(null);
+			user = userMapper.selectByIdOrUserName(query);
+			Assert.assertNotNull(user);
+			//当 id 和 name 都为空时
+			query.setUserName(null);
+			user = userMapper.selectByIdOrUserName(query);
+			Assert.assertNull(user);
+		} finally {
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+	@Test
+	public void testSelectByIdList(){
+		SqlSession sqlSession = getSqlSession();
+		try {
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			List<Long> idList = new ArrayList<Long>();
+			idList.add(1L);
+			idList.add(1001L);
+			//业务逻辑中必须校验 idList.size() > 0
+			List<SysUser> userList = userMapper.selectByIdList(idList);
+			Assert.assertEquals(2, userList.size());
+		} finally {
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+
+	@Test
+	public void testInsertList(){
+		SqlSession sqlSession = getSqlSession();
+		try {
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//创建一个 user 对象
+			List<SysUser> userList = new ArrayList<SysUser>();
+			for(int i = 0; i < 2; i++){
+				SysUser user = new SysUser();
+				user.setUserName("test" + i);
+				user.setUserPassword("123456");
+				user.setUserEmail("test@mybatis.tk");
+				userList.add(user);
+			}
+			//将新建的对象批量插入数据库中，特别注意，这里的返回值 result 是执行的 SQL 影响的行数
+			int result = userMapper.insertList(userList);
+			Assert.assertEquals(2, result);
+			for(SysUser user : userList){
+				System.out.println(user.getId());
+			}
+		} finally {
+			//为了不影响数据库中的数据导致其他测试失败，这里选择回滚
+			sqlSession.rollback();
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+
+	@Test
+	public void testUpdateByMap(){
+		SqlSession sqlSession = getSqlSession();
+		try {
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//从数据库查询 1 个 user 对象
+			Map<String, Object> map = new HashMap<String, Object>();
+			map.put("id", 1L);
+			map.put("user_email", "test@mybatis.tk");
+			map.put("user_password", "12345678");
+			//更新数据
+			userMapper.updateByMap(map);
+			//根据当前 id 查询修改后的数据
+			SysUser user = userMapper.selectById(1L);
+			Assert.assertEquals("test@mybatis.tk", user.getUserEmail());
+		} finally {
+			//为了不影响数据库中的数据导致其他测试失败，这里选择回滚
+			sqlSession.rollback();
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+	@Test
+	public void testSelectUserAndRoleById(){
+		//获取 sqlSession
+		SqlSession sqlSession = getSqlSession();
+		try {
+			//获取 UserMapper 接口
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//特别注意，在我们测试数据中，id = 1L 的用户有两个角色
+			//由于后面覆盖前面的，因此只能得到最后一个角色
+			//我们这里使用只有一个角色的用户（id = 1001L）
+			//可以用 selectUserAndRoleById2 替换进行测试
+			SysUser user = userMapper.selectUserAndRoleById2(1001L);
+			//user 不为空
+			Assert.assertNotNull(user);
+			//user.role 也不为空
+			Assert.assertNotNull(user.getRole());
+		} finally {
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+	@Test
+	public void testSelectUserAndRoleByIdSelect(){
+		//获取 sqlSession
+		SqlSession sqlSession = getSqlSession();
+		try {
+			//获取 UserMapper 接口
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//特别注意，在我们测试数据中，id = 1L 的用户有两个角色
+			//由于后面覆盖前面的，因此只能得到最后一个角色
+			//我们这里使用只有一个角色的用户（id = 1001L）
+			SysUser user = userMapper.selectUserAndRoleByIdSelect(1001L);
+			//user 不为空
+			Assert.assertNotNull(user);
+			//user.role 也不为空
+//			System.out.println("调用 user.equals(null)");
+//			user.equals(null);
+			System.out.println("调用 user.getRole()");
+			Assert.assertNotNull(user.getRole());
+		} finally {
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+	@Test
+	public void testSelectAllUserAndRoles(){
+		//获取 sqlSession
+		SqlSession sqlSession = getSqlSession();
+		try {
+			//获取 UserMapper 接口
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			List<SysUser> userList = userMapper.selectAllUserAndRoles();
+			System.out.println("用户数：" + userList.size());
+			for(SysUser user : userList){
+				System.out.println("用户名：" + user.getUserName());
+				for(SysRole role: user.getRoleList()){
+					System.out.println("角色名：" + role.getRoleName());
+					for(SysPrivilege privilege : role.getPrivilegeList()){
+						System.out.println("权限名：" + privilege.getPrivilegeName());
+					}
+				}
+			}
+		} finally {
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+
+	@Test
+	public void testSelectAllUserAndRolesSelect(){
+		//获取 sqlSession
+		SqlSession sqlSession = getSqlSession();
+		try {
+			//获取 UserMapper 接口
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			SysUser user = userMapper.selectAllUserAndRolesSelect(1L);
+			System.out.println("用户名：" + user.getUserName());
+			for(SysRole role: user.getRoleList()){
+				System.out.println("角色名：" + role.getRoleName());
+				for(SysPrivilege privilege : role.getPrivilegeList()){
+					System.out.println("权限名：" + privilege.getPrivilegeName());
+				}
+			}
+		} finally {
+			//不要忘记关闭 sqlSession
+			sqlSession.close();
+		}
+	}
+
+
+	@Test
+	public void testSelectAllByRowBounds(){
+		SqlSession sqlSession = getSqlSession();
+		try {
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//查询前两个，使用 RowBounds 类型不会查询总数
+			RowBounds rowBounds = new RowBounds(1, 1);
+			List<SysUser> list = userMapper.selectAll(rowBounds);
+			for(SysUser user : list){
+				System.out.println("用户名：" + user.getUserName());
+			}
+			//使用 PageRowBounds 会查询总数
+			PageRowBounds pageRowBounds = new PageRowBounds(2, 2);
+			list = userMapper.selectAll(pageRowBounds);
+			//获取总数
+			System.out.println("查询总数：" + pageRowBounds.getTotal());
+			for(SysUser user : list){
+				System.out.println("用户名2：" + user.getUserName());
+			}
+			//再次查询
+			pageRowBounds = new PageRowBounds(4, 2);
+			list = userMapper.selectAll(pageRowBounds);
+			//获取总数
+			System.out.println("查询总数：" + pageRowBounds.getTotal());
+			for(SysUser user : list){
+				System.out.println("用户名3：" + user.getUserName());
+			}
+		} finally {
+			sqlSession.close();
+		}
+		sqlSession = getSqlSession();
+		try {
+			System.out.println("-----------测试二级缓存------------");
+
+			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
+			//查询前两个，使用 RowBounds 类型不会查询总数
+			RowBounds rowBounds = new RowBounds(0, 2);
+			List<SysUser> list = userMapper.selectAll(rowBounds);
+			for(SysUser user : list){
+				System.out.println("用户名：" + user.getUserName());
+			}
+			//使用 PageRowBounds 会查询总数
+			PageRowBounds pageRowBounds = new PageRowBounds(2, 2);
+			list = userMapper.selectAll(pageRowBounds);
+			//获取总数
+			System.out.println("查询总数：" + pageRowBounds.getTotal());
+			for(SysUser user : list){
+				System.out.println("用户名2：" + user.getUserName());
+			}
+			//再次查询
+			pageRowBounds = new PageRowBounds(4, 2);
+			list = userMapper.selectAll(pageRowBounds);
+			//获取总数
+			System.out.println("查询总数：" + pageRowBounds.getTotal());
+			for(SysUser user : list){
+				System.out.println("用户名3：" + user.getUserName());
+			}
+		} finally {
+			sqlSession.close();
+		}
+	}
 
 
 }
