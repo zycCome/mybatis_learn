@@ -17,6 +17,7 @@ public interface UserMapper {
      * @return
      */
     SysUser selectById(Long id);
+    SysUser selectById();
 
     /**
      * 通过 id 查询用户

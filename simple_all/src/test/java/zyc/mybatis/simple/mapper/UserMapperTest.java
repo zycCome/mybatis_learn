@@ -25,7 +25,11 @@ public class UserMapperTest extends BaseMapperTest {
 			UserMapper userMapper = sqlSession.getMapper(UserMapper.class);
 			//调用 selectById 方法，查询 id = 1 的用户
 			SysUser user = userMapper.selectById(1l);
+			SysUser user3 = userMapper.selectById(1l);
 			SysUser user2 = userMapper.selectById("2");
+			// 一级缓存
+			Assert.assertTrue(user == user3);
+
 			//user 不为空
 			Assert.assertNotNull(user);
 			//userName = admin
@@ -233,6 +237,7 @@ public class UserMapperTest extends BaseMapperTest {
 			//只查询用户名时
 			SysUser query = new SysUser();
 			query.setUserName("ad");
+			query.setCreateTime(new Date());
 			List<SysUser> userList = userMapper.selectByUser(query);
 			Assert.assertTrue(userList.size() > 0);
 			//只查询用户邮箱时

@@ -48,4 +48,7 @@ public class SysUser implements Serializable {
 	 */
 	private List<SysRole> roleList;
 
+	public void setId(Long id) {
+		this.id = id;
+	}
 }
